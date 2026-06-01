@@ -1,0 +1,119 @@
+name: Build macOS App
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    # 手动触发：GitHub → Actions → "Build macOS App" → Run workflow
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    name: 构建 Live2Gif.app + DMG
+
+    steps:
+      # ── 1. 检出代码 ──────────────────────────────────────────────
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      # ── 2. 设置 Python ────────────────────────────────────────────
+      - name: 设置 Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # ── 3. 安装依赖 ──────────────────────────────────────────────
+      - name: 安装 Python 依赖
+        run: |
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      # ── 4. 安装 FFmpeg ────────────────────────────────────────────
+      - name: 安装 FFmpeg（brew）
+        run: |
+          brew install ffmpeg
+          echo "FFmpeg 版本: $(ffmpeg -version | head -1)"
+
+      # ── 5. PyInstaller 打包 ───────────────────────────────────────
+      - name: PyInstaller 构建 .app Bundle
+        run: |
+          # 图标参数（icon.icns 存在时才使用，否则用默认图标）
+          ICON_ARG=""
+          if [ -f assets/icon.icns ]; then
+            ICON_ARG="--icon=assets/icon.icns"
+            echo "✓ 使用自定义图标 assets/icon.icns"
+          else
+            echo "⚠ 未找到 icon.icns，使用默认图标"
+          fi
+
+          pyinstaller \
+            --windowed \
+            --name Live2Gif \
+            $ICON_ARG \
+            --add-binary="$(which ffmpeg):." \
+            --osx-bundle-identifier=com.livetogif.app \
+            main_gui.py
+
+          echo "✓ .app Bundle 构建完成"
+          ls -la dist/Live2Gif.app/Contents/MacOS/
+
+      # ── 6. 配置 Info.plist ────────────────────────────────────────
+      - name: 配置 Info.plist（文件类型关联）
+        run: |
+          python3 << 'PYEOF'
+          import plistlib
+          from pathlib import Path
+
+          plist_path = Path("dist/Live2Gif.app/Contents/Info.plist")
+
+          with plist_path.open("rb") as f:
+              plist = plistlib.load(f)
+
+          # 添加文件类型关联：支持右键"打开方式" → Live2Gif
+          plist["CFBundleDocumentTypes"] = [
+              {
+                  "CFBundleTypeName": "Live Photo (HEIC)",
+                  "CFBundleTypeExtensions": ["heic", "HEIC"],
+                  "CFBundleTypeRole": "Viewer",
+                  "LSHandlerRank": "Alternate",
+                  "LSItemContentTypes": ["public.heic"],
+              },
+              {
+                  "CFBundleTypeName": "QuickTime Movie",
+                  "CFBundleTypeExtensions": ["mov", "MOV"],
+                  "CFBundleTypeRole": "Viewer",
+                  "LSHandlerRank": "Alternate",
+                  "LSItemContentTypes": ["com.apple.quicktime-movie"],
+              },
+          ]
+
+          # 添加 Finder 拓展信息
+          plist["CFBundleShortVersionString"] = "1.0.0"
+          plist["CFBundleVersion"] = "1.0.0"
+          plist["NSHighResolutionCapable"] = True
+          plist["LSMinimumSystemVersion"] = "11.0"
+
+          with plist_path.open("wb") as f:
+              plistlib.dump(plist, f)
+
+          print("✓ Info.plist 已配置")
+          PYEOF
+
+      # ── 7. 创建 DMG ───────────────────────────────────────────────
+      - name: 创建 DMG 安装镜像
+        run: |
+          hdiutil create \
+            -volname "Live2Gif" \
+            -srcfolder dist/Live2Gif.app \
+            -ov -format UDZO \
+            Live2Gif.dmg
+
+          echo "✓ DMG 已创建: $(du -h Live2Gif.dmg | cut -f1)"
+
+      # ── 8. 上传产物 ───────────────────────────────────────────────
+      - name: 上传 DMG 产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: Live2Gif-macOS
+          path: Live2Gif.dmg
+          retention-days: 30

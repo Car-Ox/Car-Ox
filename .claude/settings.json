@@ -1,0 +1,10 @@
+[
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hook": "echo '[Claude Code] 提示：请更新今日开发日志 → .devlogs/$(date +%Y-%m-%d).md'"
+      }
+    ]
+  }
+]
