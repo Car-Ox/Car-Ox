@@ -10,6 +10,9 @@ jobs:
   build-macos:
     runs-on: macos-latest
     name: 构建 Live2Gif.app + DMG
+    defaults:
+      run:
+        working-directory: live2gif
 
     steps:
       # ── 1. 检出代码 ──────────────────────────────────────────────
@@ -115,5 +118,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Live2Gif-macOS
-          path: Live2Gif.dmg
+          path: live2gif/Live2Gif.dmg
           retention-days: 30

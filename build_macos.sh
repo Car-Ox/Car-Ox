@@ -57,6 +57,11 @@ if ! command -v brew &>/dev/null; then
 fi
 info "Homebrew: $(brew --version | head -1)"
 
+# ── 进入项目目录 ────────────────────────────────────────────────────────────
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR/live2gif"
+info "工作目录: $(pwd)"
+
 # ── 安装依赖 ────────────────────────────────────────────────────────────────
 info "安装 Python 依赖..."
 pip install -r requirements.txt
