@@ -37,7 +37,14 @@ jobs:
           brew install ffmpeg
           echo "FFmpeg 版本: $(ffmpeg -version | head -1)"
 
-      # ── 5. PyInstaller 打包 ───────────────────────────────────────
+      # ── 5. 运行测试（macOS 环境验证）───────────────────────────────
+      - name: 运行 pytest（验证 macOS 兼容性）
+        run: |
+          python -m pytest tests/ -v --ignore=tests/test_gui.py 2>&1
+          echo ""
+          echo "✓ macOS 兼容性测试通过"
+
+      # ── 6. PyInstaller 打包 ───────────────────────────────────────
       - name: PyInstaller 构建 .app Bundle
         run: |
           # 图标参数（icon.icns 存在时才使用，否则用默认图标）
@@ -60,7 +67,7 @@ jobs:
           echo "✓ .app Bundle 构建完成"
           ls -la dist/Live2Gif.app/Contents/MacOS/
 
-      # ── 6. 配置 Info.plist ────────────────────────────────────────
+      # ── 7. 配置 Info.plist ────────────────────────────────────────
       - name: 配置 Info.plist（文件类型关联）
         run: |
           python3 << 'PYEOF'
@@ -102,7 +109,7 @@ jobs:
           print("✓ Info.plist 已配置")
           PYEOF
 
-      # ── 7. 创建 DMG ───────────────────────────────────────────────
+      # ── 8. 创建 DMG ───────────────────────────────────────────────
       - name: 创建 DMG 安装镜像
         run: |
           hdiutil create \
@@ -113,7 +120,7 @@ jobs:
 
           echo "✓ DMG 已创建: $(du -h Live2Gif.dmg | cut -f1)"
 
-      # ── 8. 上传产物 ───────────────────────────────────────────────
+      # ── 9. 上传产物 ───────────────────────────────────────────────
       - name: 上传 DMG 产物
         uses: actions/upload-artifact@v4
         with:
