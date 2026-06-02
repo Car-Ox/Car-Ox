@@ -89,8 +89,8 @@ class TestResolveInput:
 
         result = resolve_input(str(heic))
 
-        # 跨平台安全比较：解析结果指向的文件应与原始 .mov 相同
-        assert Path(result).resolve() == mov.resolve()
+        # 跨平台安全比较：使用 samefile 处理大小写不敏感文件系统
+        assert Path(result).resolve().samefile(mov.resolve())
 
     def test_accepts_path_object(self, tmp_path: Path) -> None:
         """应同时接受 Path 对象作为输入。"""

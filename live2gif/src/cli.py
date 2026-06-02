@@ -146,20 +146,18 @@ def collect_files(directory: Path, recursive: bool = False) -> list[Path]:
     # 收集结果：优先 .heic（有匹配 .mov 的），然后 .mov
     result: list[Path] = []
     seen_stems: set[str] = set()
-    heic_files: list[Path] = []
 
+    # 第一轮：处理 .heic 文件（优先）
     for f in all_files:
-        suffix = f.suffix.lower()
-        if suffix == ".heic":
-            if f.stem in mov_names:
-                result.append(f)
-                seen_stems.add(f.stem)
-            else:
-                heic_files.append(f)
-        elif suffix == ".mov":
-            if f.stem not in seen_stems:
-                result.append(f)
-                seen_stems.add(f.stem)
+        if f.suffix.lower() == ".heic" and f.stem in mov_names:
+            result.append(f)
+            seen_stems.add(f.stem)
+
+    # 第二轮：处理未覆盖的 .mov 文件
+    for f in all_files:
+        if f.suffix.lower() == ".mov" and f.stem not in seen_stems:
+            result.append(f)
+            seen_stems.add(f.stem)
 
     result.sort()
     return result
