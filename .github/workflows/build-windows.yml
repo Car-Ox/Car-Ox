@@ -1,0 +1,50 @@
+name: Build Windows App
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    name: 构建 Live2Gif.exe + pytest 验证
+    defaults:
+      run:
+        working-directory: live2gif
+
+    steps:
+      # ── 1. 检出代码 ──────────────────────────────────────────────
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      # ── 2. 设置 Python 矩阵 ──────────────────────────────────────
+      - name: 设置 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # ── 3. 安装依赖 ──────────────────────────────────────────────
+      - name: 安装 Python 依赖
+        run: |
+          pip install -r requirements.txt
+          pip install ruff mypy
+
+      # ── 4. 安装 FFmpeg ────────────────────────────────────────────
+      - name: 安装 FFmpeg（winget）
+        run: |
+          winget install "FFmpeg (Essentials Build)" --accept-package-agreements --accept-source-agreements
+          # 刷新 PATH 使 winget 安装的 ffmpeg 可用
+          $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+          ffmpeg -version
+
+      # ── 5. Lint 检查 ──────────────────────────────────────────────
+      - name: Ruff 代码风格检查
+        run: ruff check src/ tests/
+
+      - name: mypy 类型检查
+        run: mypy src/ --strict
+
+      # ── 6. 运行测试 ──────────────────────────────────────────────
+      - name: 运行 pytest（排除 GUI，无显示器）
+        run: python -m pytest tests/ -v --ignore=tests/test_gui.py

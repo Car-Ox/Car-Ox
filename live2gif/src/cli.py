@@ -15,16 +15,10 @@ from typing import Sequence
 
 from src.converter import convert_mov_to_gif, ConversionError
 from src.input_resolver import resolve_input, InputError
+from src.quality_presets import quality_to_max_colors
 
-# 并行转换最大线程数
-MAX_WORKERS = 4
-
-# 质量预设 → max_colors 映射
-QUALITY_MAP = {
-    "low": 64,
-    "medium": 128,
-    "high": 256,
-}
+# 并行转换最大线程数（可通过 --workers 参数或 LIVE2GIF_MAX_WORKERS 环境变量覆盖）
+_MAX_WORKERS_DEFAULT = int(os.environ.get("LIVE2GIF_MAX_WORKERS", "4"))
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -99,6 +93,15 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     parser.add_argument(
+        "-w", "--workers",
+        type=int,
+        default=_MAX_WORKERS_DEFAULT,
+        metavar="N",
+        help=f"并行转换线程数（默认 {_MAX_WORKERS_DEFAULT}，可通过环境变量 "
+             f"LIVE2GIF_MAX_WORKERS 设置）。",
+    )
+
+    parser.add_argument(
         "--verbose",
         action="store_true",
         default=False,
@@ -106,27 +109,6 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     return parser
-
-
-def parse_quality(quality: str | None) -> int | None:
-    """将质量字符串映射为 max_colors 数值。
-
-    Args:
-        quality: 质量字符串 "low" / "medium" / "high"，或 None。
-
-    Returns:
-        max_colors 整数值，None 时返回 None。
-
-    Raises:
-        ValueError: 无效的质量等级。
-    """
-    if quality is None:
-        return None
-    if quality not in QUALITY_MAP:
-        raise ValueError(
-            f"无效的质量等级「{quality}」，可选：{', '.join(QUALITY_MAP)}"
-        )
-    return QUALITY_MAP[quality]
 
 
 def collect_files(directory: Path, recursive: bool = False) -> list[Path]:
@@ -213,7 +195,7 @@ def main(argv: Sequence[str] | None = None, *,
             fps=args.frame_rate,
             max_size=args.max_size,
             loop=not args.no_loop,
-            max_colors=parse_quality(args.quality),
+            max_colors=quality_to_max_colors(args.quality),
             verbose=args.verbose,
         )
     elif input_path.is_dir():
@@ -223,9 +205,10 @@ def main(argv: Sequence[str] | None = None, *,
             fps=args.frame_rate,
             max_size=args.max_size,
             loop=not args.no_loop,
-            max_colors=parse_quality(args.quality),
+            max_colors=quality_to_max_colors(args.quality),
             recursive=args.recursive,
             verbose=args.verbose,
+            workers=args.workers,
         )
     else:
         print(f"❌ 输入路径不存在: {input_path}", file=sys.stderr)
@@ -243,7 +226,22 @@ def _convert_single(
     max_colors: int | None,
     verbose: bool,
 ) -> int:
-    """处理单文件转换。"""
+    """处理单文件转换。
+
+    执行流程：输入解析 → 输出路径构造 → FFmpeg 转换 → 结果反馈。
+
+    Args:
+        input_path: 已解析为绝对路径的输入文件（.mov 或 .heic）。
+        output: 输出目录，None 时使用输入文件所在目录。
+        fps: GIF 帧率。
+        max_size: GIF 最大边长（像素）。
+        loop: 是否无限循环。
+        max_colors: 调色板最大颜色数，None 使用默认。
+        verbose: 是否打印详细日志。
+
+    Returns:
+        0 表示转换成功，1 表示失败。
+    """
     try:
         resolved = resolve_input(str(input_path))
     except InputError as e:
@@ -290,8 +288,29 @@ def _convert_directory(
     max_colors: int | None,
     recursive: bool,
     verbose: bool,
+    workers: int = 4,
 ) -> int:
-    """处理目录批量转换。"""
+    """处理目录批量转换。
+
+    扫描目录收集 Live Photo 文件，使用线程池并行转换，
+    并提供进度反馈和最终统计。
+
+    Ctrl+C 中断时会优雅退出，取消所有未开始的任务。
+
+    Args:
+        directory: 已解析为绝对路径的目标目录。
+        output: 输出目录，None 时自动创建 output_gifs 子目录。
+        fps: GIF 帧率。
+        max_size: GIF 最大边长（像素）。
+        loop: 是否无限循环。
+        max_colors: 调色板最大颜色数，None 使用默认。
+        recursive: 是否递归扫描子目录。
+        verbose: 是否打印逐文件进度。
+        workers: 并行转换线程数，默认 4。
+
+    Returns:
+        0 表示全部成功，1 表示有失败（或被用户中断）。
+    """
     files = collect_files(directory, recursive=recursive)
 
     if not files:
@@ -329,18 +348,26 @@ def _convert_directory(
         except (ConversionError, InputError) as e:
             return (f, False, str(e))
 
-    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+    with ThreadPoolExecutor(max_workers=workers) as executor:
         futures = {executor.submit(_convert_one, f): f for f in files}
 
-        for i, future in enumerate(as_completed(futures), 1):
-            f, ok, msg = future.result()
-            if ok:
-                success += 1
-                if verbose:
-                    print(f"  [{i}/{total}] ✅ {f.name} → {msg}")
-            else:
-                failed += 1
-                print(f"  [{i}/{total}] ❌ {f.name}: {msg}", file=sys.stderr)
+        try:
+            for i, future in enumerate(as_completed(futures), 1):
+                try:
+                    f, ok, msg = future.result()
+                except KeyboardInterrupt:
+                    executor.shutdown(wait=False, cancel_futures=True)
+                    raise
+                if ok:
+                    success += 1
+                    if verbose:
+                        print(f"  [{i}/{total}] ✅ {f.name} → {msg}")
+                else:
+                    failed += 1
+                    print(f"  [{i}/{total}] ❌ {f.name}: {msg}", file=sys.stderr)
+        except KeyboardInterrupt:
+            print("\n⚠️  用户中断，正在取消剩余任务...")
+            failed += total - success - failed
 
     elapsed = time.monotonic() - start_time
 

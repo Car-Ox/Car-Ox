@@ -173,6 +173,18 @@ class TestParameterExtraction:
         app._size_var.set("720")
         assert app.max_size == 720
 
+    def test_max_size_invalid_input_returns_default(self, tk_root: tk.Tk) -> None:
+        """用户输入非数字文本时 max_size 应安全回退到 480。"""
+        app = LiveToGifGUI(root=tk_root)
+        app._size_var.set("abc")
+        assert app.max_size == 480  # 默认值安全回退
+
+    def test_max_size_empty_string_returns_default(self, tk_root: tk.Tk) -> None:
+        """用户清空输入框时 max_size 应安全回退到 480。"""
+        app = LiveToGifGUI(root=tk_root)
+        app._size_var.set("")
+        assert app.max_size == 480  # 默认值安全回退
+
     def test_quality_reads_from_combo(self, tk_root: tk.Tk) -> None:
         """quality 应从下拉框读取当前选择。"""
         app = LiveToGifGUI(root=tk_root)

@@ -5,13 +5,12 @@
 | 层级 | 技术选型 | 版本要求 |
 |------|---------|---------|
 | 语言 | Python | 3.10+ |
-| GUI 框架 | PySide6 / PyQt6 | 6.5+ |
+| GUI 框架 | Tkinter (Python 标准库) | 内置 |
 | 视频处理 | FFmpeg (通过 subprocess) | 5.0+ |
 | 打包工具 | PyInstaller | 5.0+ |
 | 测试框架 | pytest | 7.0+ |
 | CI/CD | GitHub Actions | - |
-| 代码格式化 | Black + isort | - |
-| 代码检查 | Ruff / Flake8 | - |
+| 代码检查 | Ruff | - |
 | 类型检查 | mypy (strict mode) | - |
 
 ---
@@ -19,38 +18,29 @@
 ## 项目结构
 
 ```
-livetogif/
+live2gif/
 ├── src/
-│   ├── __init__.py
-│   ├── main.py              # 应用入口
-│   ├── ui/                  # GUI 模块
-│   │   ├── __init__.py
-│   │   ├── main_window.py
-│   │   ├── widgets/
-│   │   └── resources/
-│   ├── core/                # 核心业务逻辑
-│   │   ├── __init__.py
-│   │   ├── converter.py     # GIF 转换引擎
-│   │   ├── livephoto.py     # Live Photo 解析
-│   │   └── batch.py         # 批量处理
-│   ├── utils/               # 工具函数
-│   │   ├── __init__.py
-│   │   ├── ffmpeg.py        # FFmpeg 封装
-│   │   └── metadata.py      # 元数据处理
-│   └── resources/           # 应用资源
+│   ├── __init__.py           # 公共 API 导出
+│   ├── converter.py          # GIF 转换引擎 (FFmpeg 双通道调色板)
+│   ├── input_resolver.py     # Live Photo (.heic → .mov) 路径解析
+│   ├── cli.py                # 命令行界面 (argparse + 批量处理)
+│   ├── gui.py                # 图形界面 (Tkinter + 线程队列)
+│   └── quality_presets.py    # CLI/GUI 共享质量预设
 ├── tests/
 │   ├── __init__.py
-│   ├── test_converter.py
-│   ├── test_livephoto.py
-│   └── fixtures/            # 测试用 Live Photo 文件
-├── docs/                    # 项目文档
-├── .devlogs/                # 开发日志
-├── .github/
-│   └── workflows/
-│       └── ci.yml           # CI 配置
-├── skills/                  # 项目技能文件
+│   ├── conftest.py           # 全局夹具 + FFmpeg 检测
+│   ├── test_converter.py     # 转换器测试 (单元 + 集成)
+│   ├── test_input_resolver.py
+│   ├── test_cli.py
+│   ├── test_gui.py
+│   └── test_quality_presets.py
+├── main.py                   # CLI 入口
+├── main_gui.py               # GUI 入口
+├── docs/                     # 项目文档
+├── .devlogs/                 # 开发日志
+├── .github/workflows/        # CI 配置
+├── assets/                   # 图标等静态资源
 ├── pyproject.toml
-├── CLAUDE.md
 └── README.md
 ```
 
@@ -61,19 +51,17 @@ livetogif/
 ### 转换管道 (Conversion Pipeline)
 
 ```
-Live Photo (.MOV+.HEIC)
-    → LivePhotoParser (解析/验证)
-    → FrameExtractor (FFmpeg 提取帧)
-    → FrameProcessor (调色/缩放/优化)
-    → GifEncoder (GIF 编码)
-    → 输出文件
+Live Photo (.heic)
+    → InputResolver (解析 → 同名 .mov)
+    → FFmpeg 双通道调色板 (palettegen → paletteuse)
+    → GIF 输出
 ```
 
 ### 模块间通信
 
-- UI 层通过信号/槽 (Qt Signals/Slots) 与核心模块通信
-- 批量处理通过 `QThread` 工作线程执行
-- FFmpeg 通过 `subprocess` 异步调用
+- UI 层通过线程安全队列 (`queue.Queue`) 与核心模块通信
+- 批量处理通过 `ThreadPoolExecutor` 工作线程池执行
+- FFmpeg 通过 `subprocess` 同步调用（带超时保护）
 
 ---
 

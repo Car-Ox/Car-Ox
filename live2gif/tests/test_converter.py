@@ -143,6 +143,61 @@ class TestConvertMovToGif:
 
         assert "FFmpeg" in str(exc_info.value)
 
+    def test_raises_conversion_error_on_timeout(self) -> None:
+        """FFmpeg 超时时应抛出 ConversionError，包含超时秒数。"""
+        with patch("src.converter.shutil.which", return_value="ffmpeg"), \
+             patch("src.converter.subprocess.run") as mock_run, \
+             _RESOLVE:
+            error = subprocess.TimeoutExpired(
+                cmd=["ffmpeg"], timeout=300,
+                stderr=b"process timed out\n",
+            )
+            mock_run.side_effect = error
+
+            with pytest.raises(ConversionError) as exc_info:
+                convert_mov_to_gif(Path("/big.mov"), Path("/out.gif"))
+
+        assert "超时" in str(exc_info.value)
+        assert "300" in str(exc_info.value)
+        assert exc_info.value.__cause__ is error
+
+    def test_raises_conversion_error_on_os_error(self) -> None:
+        """FFmpeg 执行失败（如 FileNotFoundError）时应抛出 ConversionError。"""
+        with patch("src.converter.shutil.which", return_value="ffmpeg"), \
+             patch("src.converter.subprocess.run") as mock_run, \
+             _RESOLVE:
+            error = FileNotFoundError(2, "No such file", "ffmpeg")
+            mock_run.side_effect = error
+
+            with pytest.raises(ConversionError) as exc_info:
+                convert_mov_to_gif(Path("/t.mov"), Path("/t.gif"))
+
+        assert "FFmpeg" in str(exc_info.value)
+        assert exc_info.value.__cause__ is error
+
+    # ── 参数验证测试 ────────────────────────────────────────────
+
+    def test_raises_value_error_for_invalid_fps(self) -> None:
+        """fps 超出 1-60 范围应抛出 ValueError。"""
+        with pytest.raises(ValueError, match="帧率"):
+            convert_mov_to_gif(Path("/t.mov"), Path("/t.gif"), fps=0)
+        with pytest.raises(ValueError, match="帧率"):
+            convert_mov_to_gif(Path("/t.mov"), Path("/t.gif"), fps=61)
+
+    def test_raises_value_error_for_invalid_max_size(self) -> None:
+        """max_size 超出 1-4096 范围应抛出 ValueError。"""
+        with pytest.raises(ValueError, match="最大边长"):
+            convert_mov_to_gif(Path("/t.mov"), Path("/t.gif"), max_size=0)
+        with pytest.raises(ValueError, match="最大边长"):
+            convert_mov_to_gif(Path("/t.mov"), Path("/t.gif"), max_size=4097)
+
+    def test_raises_value_error_for_invalid_max_colors(self) -> None:
+        """max_colors 超出 2-256 范围应抛出 ValueError。"""
+        with pytest.raises(ValueError, match="最大颜色数"):
+            convert_mov_to_gif(Path("/t.mov"), Path("/t.gif"), max_colors=1)
+        with pytest.raises(ValueError, match="最大颜色数"):
+            convert_mov_to_gif(Path("/t.mov"), Path("/t.gif"), max_colors=257)
+
     # ── 路径类型测试 ────────────────────────────────────────────
 
     def test_accepts_string_paths(self) -> None:

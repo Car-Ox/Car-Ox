@@ -21,7 +21,7 @@
 - **名称：** LiveToGif
 - **目标：** 将 Apple Live Photo 转换为高质量 GIF 动图
 - **平台：** macOS（主）/ Windows（辅）
-- **技术栈：** Python 3.10+ / PySide6 / FFmpeg
+- **技术栈：** Python 3.10+ / Tkinter / FFmpeg
 
 ---
 
@@ -55,7 +55,7 @@
 
 | 序号 | 技能名称 | 用途 | 触发场景 |
 |------|---------|------|---------|
-| 1 | `python-crossplatform-desktop` | Python 跨平台桌面开发 | GUI 开发、PySide6 组件 |
+| 1 | `python-crossplatform-desktop` | Python 跨平台桌面开发 | GUI 开发、Tkinter 组件 |
 | 2 | `ffmpeg-mastery` | FFmpeg 视频处理 | 视频转换、GIF 编码 |
 | 3 | `macos-app-packaging` | macOS 应用打包 | .app Bundle、DMG、签名 |
 | 4 | `test-and-ci-driven` | 测试驱动与 CI | TDD 流程、GitHub Actions |

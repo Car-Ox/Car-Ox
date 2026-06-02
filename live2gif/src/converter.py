@@ -77,7 +77,16 @@ def convert_mov_to_gif(
     Raises:
         ConversionError: FFmpeg 未找到或转换过程出错。
         InputError: 输入文件无法解析（格式不支持、文件不存在等）。
+        ValueError: 参数值超出有效范围。
     """
+    # 参数验证
+    if fps < 1 or fps > 60:
+        raise ValueError(f"帧率必须在 1-60 之间，当前值: {fps}")
+    if max_size < 1 or max_size > 4096:
+        raise ValueError(f"最大边长必须在 1-4096 之间，当前值: {max_size}")
+    if max_colors is not None and (max_colors < 2 or max_colors > 256):
+        raise ValueError(f"最大颜色数必须在 2-256 之间，当前值: {max_colors}")
+
     # 解析输入：支持 .heic → .mov 自动映射
     resolved_mov = resolve_input(input_path)
     output_p = Path(output_path)
@@ -115,21 +124,15 @@ def convert_mov_to_gif(
             check=True,
             capture_output=True,
             text=True,
+            timeout=300,  # 5 分钟超时，防止 FFmpeg 处理损坏文件时永久挂起
         )
     except subprocess.CalledProcessError as exc:
         raise ConversionError(exc.stderr.strip()) from exc
-
-
-# ── 测试块 ────────────────────────────────────────────────────────────────
-if __name__ == "__main__":
-    # Windows 上请将 TEST_INPUT 替换为实际存在的 Live Photo 文件路径
-    # 支持 .mov 或 .heic（会自动查找同名 .mov）
-    TEST_INPUT = r"D:\test_live_photo.mov"  # 或 .heic
-    TEST_GIF = r"D:\test_output.gif"
-
-    try:
-        print(f"正在转换: {TEST_INPUT} → {TEST_GIF}")
-        convert_mov_to_gif(TEST_INPUT, TEST_GIF, fps=15, max_size=480, loop=True)
-        print(f"✅ 转换成功！输出文件: {TEST_GIF}")
-    except (ConversionError, InputError) as e:
-        print(f"❌ 转换失败: {e}")
+    except subprocess.TimeoutExpired as exc:
+        raise ConversionError(
+            f"转换超时（{exc.timeout} 秒）。文件可能过大或已损坏。"
+        ) from exc
+    except OSError as exc:
+        raise ConversionError(
+            f"无法执行 FFmpeg（{exc}）。请确认 FFmpeg 已正确安装。"
+        ) from exc

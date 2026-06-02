@@ -29,7 +29,7 @@ jobs:
       - name: 安装 Python 依赖
         run: |
           pip install -r requirements.txt
-          pip install pyinstaller
+          pip install pyinstaller ruff mypy
 
       # ── 4. 安装 FFmpeg ────────────────────────────────────────────
       - name: 安装 FFmpeg（brew）
@@ -37,7 +37,14 @@ jobs:
           brew install ffmpeg
           echo "FFmpeg 版本: $(ffmpeg -version | head -1)"
 
-      # ── 5. 运行测试（macOS 环境验证）───────────────────────────────
+      # ── 5. Lint 检查 ──────────────────────────────────────────────
+      - name: Ruff 代码风格检查
+        run: ruff check src/ tests/
+
+      - name: mypy 类型检查
+        run: mypy src/ --strict
+
+      # ── 6. 运行测试（macOS 环境验证）───────────────────────────────
       - name: 运行 pytest（验证 macOS 兼容性）
         run: |
           python -m pytest tests/ -v --ignore=tests/test_gui.py 2>&1
@@ -67,7 +74,7 @@ jobs:
           echo "✓ .app Bundle 构建完成"
           ls -la dist/Live2Gif.app/Contents/MacOS/
 
-      # ── 7. 配置 Info.plist ────────────────────────────────────────
+      # ── 8. 配置 Info.plist ────────────────────────────────────────
       - name: 配置 Info.plist（文件类型关联）
         run: |
           python3 << 'PYEOF'
@@ -109,7 +116,7 @@ jobs:
           print("✓ Info.plist 已配置")
           PYEOF
 
-      # ── 8. 创建 DMG ───────────────────────────────────────────────
+      # ── 9. 创建 DMG ───────────────────────────────────────────────
       - name: 创建 DMG 安装镜像
         run: |
           hdiutil create \
@@ -120,10 +127,19 @@ jobs:
 
           echo "✓ DMG 已创建: $(du -h Live2Gif.dmg | cut -f1)"
 
-      # ── 9. 上传产物 ───────────────────────────────────────────────
+      # ── 10. 上传产物 ───────────────────────────────────────────────
       - name: 上传 DMG 产物
         uses: actions/upload-artifact@v4
         with:
           name: Live2Gif-macOS
           path: live2gif/Live2Gif.dmg
           retention-days: 30
+
+      # ── 11. 创建 GitHub Release（仅 tag 推送时）────────────────────
+      - name: 创建 GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: live2gif/Live2Gif.dmg
+          generate_release_notes: true
+          draft: false

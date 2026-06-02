@@ -16,6 +16,7 @@ from tkinter import filedialog, messagebox, ttk
 
 from src.converter import convert_mov_to_gif, ConversionError
 from src.input_resolver import resolve_input, InputError
+from src.quality_presets import quality_to_max_colors
 
 
 class LiveToGifGUI:
@@ -145,8 +146,14 @@ class LiveToGifGUI:
 
     @property
     def max_size(self) -> int:
-        """当前最大边长设置值。"""
-        return int(self._size_var.get())
+        """当前最大边长设置值。
+
+        用户输入非数字内容时安全回退到默认值 480。
+        """
+        try:
+            return int(self._size_var.get())
+        except ValueError:
+            return 480  # 默认值安全回退
 
     @property
     def quality(self) -> str | None:
@@ -216,7 +223,7 @@ class LiveToGifGUI:
             "fps": self.fps,
             "max_size": self.max_size,
             "loop": self.loop,
-            "max_colors": _quality_to_colors(self.quality),
+            "max_colors": quality_to_max_colors(self.quality),
         }
 
         # 后台线程执行转换
@@ -283,7 +290,7 @@ class LiveToGifGUI:
         if sys.platform == "darwin":
             subprocess.run(["open", "-R", filepath])
         else:
-            subprocess.run(["explorer", "/select,", str(Path(filepath))])
+            subprocess.run(["explorer", "/select," + str(Path(filepath))])
 
     # ── 启动 ────────────────────────────────────────────────────────
 
@@ -292,18 +299,3 @@ class LiveToGifGUI:
         self.root.mainloop()
 
 
-# ── 辅助函数 ────────────────────────────────────────────────────────
-
-def _quality_to_colors(quality: str | None) -> int | None:
-    """将质量字符串映射为 max_colors 数值。
-
-    Args:
-        quality: "low" / "medium" / "high" 或 None。
-
-    Returns:
-        max_colors 值，None 表示使用默认。
-    """
-    if quality is None:
-        return None
-    mapping = {"low": 64, "medium": 128, "high": 256}
-    return mapping.get(quality)

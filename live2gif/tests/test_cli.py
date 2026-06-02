@@ -9,7 +9,8 @@ from unittest.mock import patch, MagicMock, call
 
 import pytest
 
-from src.cli import build_parser, parse_quality, collect_files, main
+from src.cli import build_parser, collect_files, main
+from src.quality_presets import quality_to_max_colors
 
 
 # ── 参数解析器测试 ────────────────────────────────────────────────
@@ -105,24 +106,24 @@ class TestParseQuality:
 
     def test_low_maps_to_64(self) -> None:
         """low → max_colors=64。"""
-        assert parse_quality("low") == 64
+        assert quality_to_max_colors("low") == 64
 
     def test_medium_maps_to_128(self) -> None:
         """medium → max_colors=128。"""
-        assert parse_quality("medium") == 128
+        assert quality_to_max_colors("medium") == 128
 
     def test_high_maps_to_256(self) -> None:
         """high → max_colors=256。"""
-        assert parse_quality("high") == 256
+        assert quality_to_max_colors("high") == 256
 
     def test_none_returns_none(self) -> None:
         """None 输入返回 None。"""
-        assert parse_quality(None) is None
+        assert quality_to_max_colors(None) is None
 
     def test_invalid_quality_raises(self) -> None:
         """非法质量字符串抛出 ValueError。"""
         with pytest.raises(ValueError, match="无效的质量等级"):
-            parse_quality("ultra")
+            quality_to_max_colors("ultra")
 
 
 # ── 文件收集测试 ──────────────────────────────────────────────────
