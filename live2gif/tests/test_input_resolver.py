@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from src.input_resolver import resolve_input, InputError
+from src.input_resolver import InputError, resolve_input
 
 
 class TestResolveInput:

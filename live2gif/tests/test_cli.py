@@ -3,15 +3,13 @@
 严格遵循 TDD：每个测试先于实现代码编写。
 """
 
-import argparse
 from pathlib import Path
-from unittest.mock import patch, MagicMock, call
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from src.cli import build_parser, collect_files, main
 from src.quality_presets import quality_to_max_colors
-
 
 # ── 参数解析器测试 ────────────────────────────────────────────────
 

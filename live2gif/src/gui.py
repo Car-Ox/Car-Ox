@@ -13,10 +13,22 @@ import threading
 import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
+from typing import TypedDict
 
-from src.converter import convert_mov_to_gif, ConversionError
-from src.input_resolver import resolve_input, InputError
+from src.converter import ConversionError, convert_mov_to_gif
+from src.input_resolver import InputError
 from src.quality_presets import quality_to_max_colors
+
+
+class _ConversionParams(TypedDict):
+    """`convert_mov_to_gif` 的参数打包类型。"""
+
+    input_path: str
+    output_path: str | Path
+    fps: int
+    max_size: int
+    loop: bool
+    max_colors: int | None
 
 
 class LiveToGifGUI:
@@ -232,7 +244,7 @@ class LiveToGifGUI:
         )
         self._thread.start()
 
-    def _run_conversion(self, params: dict) -> None:
+    def _run_conversion(self, params: _ConversionParams) -> None:
         """在后台线程中执行 FFmpeg 转换。
 
         Args:
@@ -240,7 +252,7 @@ class LiveToGifGUI:
         """
         try:
             convert_mov_to_gif(**params)
-            self._queue.put(("success", params["output_path"]))
+            self._queue.put(("success", str(params["output_path"])))
         except (ConversionError, InputError, Exception) as e:
             self._queue.put(("error", str(e)))
 

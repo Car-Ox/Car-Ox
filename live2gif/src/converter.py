@@ -11,7 +11,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from src.input_resolver import resolve_input, InputError
+from src.input_resolver import resolve_input
 
 
 class ConversionError(Exception):

@@ -9,12 +9,12 @@ import argparse
 import os
 import sys
 import time
+from collections.abc import Sequence
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import Sequence
 
-from src.converter import convert_mov_to_gif, ConversionError
-from src.input_resolver import resolve_input, InputError
+from src.converter import ConversionError, convert_mov_to_gif
+from src.input_resolver import InputError, resolve_input
 from src.quality_presets import quality_to_max_colors
 
 # 并行转换最大线程数（可通过 --workers 参数或 LIVE2GIF_MAX_WORKERS 环境变量覆盖）

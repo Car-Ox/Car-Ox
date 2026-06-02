@@ -3,7 +3,6 @@
 测试 CLI 与 GUI 共享的质量预设映射和辅助函数。
 """
 
-from typing import Generator
 
 import pytest
 

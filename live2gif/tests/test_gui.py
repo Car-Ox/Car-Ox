@@ -6,17 +6,14 @@
 
 from __future__ import annotations
 
-import queue
 import sys
-import threading
 import tkinter as tk
 from pathlib import Path
-from unittest.mock import patch, MagicMock, call
+from unittest.mock import patch
 
 import pytest
 
 from src.gui import LiveToGifGUI
-
 
 # ── 测试辅助 ────────────────────────────────────────────────────────
 
@@ -68,12 +65,12 @@ class TestGUIConstruction:
 
     def test_window_title(self, tk_root: tk.Tk) -> None:
         """主窗口标题应为 Live2Gif。"""
-        app = LiveToGifGUI(root=tk_root)
+        _ = LiveToGifGUI(root=tk_root)
         assert tk_root.title() == "Live2Gif"
 
     def test_window_not_resizable(self, tk_root: tk.Tk) -> None:
         """窗口应不可调整大小。"""
-        app = LiveToGifGUI(root=tk_root)
+        _ = LiveToGifGUI(root=tk_root)
         # resizable() 无参数返回 (width_bool, height_bool)
         w, h = tk_root.resizable()
         assert not w and not h

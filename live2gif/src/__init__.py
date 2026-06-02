@@ -5,10 +5,10 @@
     from src import LiveToGifGUI  # GUI
 """
 
-from src.converter import convert_mov_to_gif, ConversionError
-from src.input_resolver import resolve_input, InputError
 from src.cli import main
+from src.converter import ConversionError, convert_mov_to_gif
 from src.gui import LiveToGifGUI
+from src.input_resolver import InputError, resolve_input
 
 __all__ = [
     "convert_mov_to_gif",

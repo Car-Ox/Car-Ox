@@ -15,7 +15,6 @@ from pathlib import Path
 
 import pytest
 
-
 # ── FFmpeg 可用性检测 ────────────────────────────────────────────────
 
 def ffmpeg_available() -> bool:

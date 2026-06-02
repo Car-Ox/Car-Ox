@@ -13,8 +13,7 @@ from unittest.mock import patch
 
 import pytest
 
-from src.converter import convert_mov_to_gif, ConversionError
-from tests.conftest import ffmpeg_available
+from src.converter import ConversionError, convert_mov_to_gif
 
 # 辅助：mock resolve_input，让输入原样返回（测试不关心解析逻辑）
 _RESOLVE = patch("src.converter.resolve_input", side_effect=lambda p: str(Path(p)))
